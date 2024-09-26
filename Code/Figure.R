@@ -1,6 +1,6 @@
 setwd("/Data")
 
-#negessary libraries to generate figure 2
+#negessary libraries to generate figure 2 and figure
 library(tidyr)
 library(dplyr) 
 library(ggplot2)
@@ -71,3 +71,28 @@ p + geom_scatterpie(aes(x=Long, y=Lat, group=Continents, r=radius),
   theme(legend.position = "bottom",
         legend.title = element_blank(),
         axis.title = element_blank())
+
+####Figure 4####
+data_species_transm <- data_trackrev %>%
+  distinct(Title, Species, Transmitters, .keep_all = TRUE)
+
+xtabs(~ Order + Transmitters, data = data_species_transm) 
+order_ord <- c("Anura", "Urodela", "Crocodilia", "Rhynchocephalia", "Squamata", "Testudines")
+
+data_species_transm <- mutate(data_species_transm, Order = factor(Order, levels = order_ord))
+
+ggplot(data_species_transm, aes(x = Order, fill = Transmitters)) +
+  geom_bar(position = "stack") +
+  labs(x = "Orders",
+       y = "Frequency") +
+  scale_fill_manual(values = c("GPS" = "#ddcc77ff", "HDF" = "#CC6677", "Radio-telemetry" = "#44AA99", "NA_value" = alpha("white", 0)),
+                    breaks = c("GPS", "HDF", "Radio-telemetry"),
+                    labels = c("GPS", "HDF", "Radio-transmitter")) +
+  ylim(0, 100) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(vjust = 3.5,size=12),
+    axis.text.y = element_text(size = 10),
+    axis.title = element_text(size = 14),
+    legend.text = element_text(size = 11),
+    legend.title = element_text(size = 14))
