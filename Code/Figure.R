@@ -1,6 +1,6 @@
 setwd("/Data")
 
-#negessary libraries to generate figure 2 and figure
+#negessary libraries to generate figure 2 and figure 4
 library(tidyr)
 library(dplyr) 
 library(ggplot2)
