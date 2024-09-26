@@ -1,5 +1,3 @@
-setwd("/Data")
-
 #negessary libraries to generate figure 2 and figure 4
 library(tidyr)
 library(dplyr) 
@@ -11,7 +9,7 @@ library(patchwork)
 library(purrr)
 library(scatterpie)
 
-data_trackrev <- read.csv("Tracking.csv", sep =";", header = T)
+data_trackrev <- read.csv("../Data/Tracking.csv", sep =";", header = T)
 
 ####Figure 2####
 data_transmitter <- data_trackrev %>%
