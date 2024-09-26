@@ -1,11 +1,19 @@
 setwd("/Data")
 
+#negessary libraries to generate figure 2
 library(tidyr)
 library(dplyr) 
 library(ggplot2)
 
+#libraries TO BE ADDED to the previous ones to create figure 3
+library(sf)
+library(patchwork)
+library(purrr)
+library(scatterpie)
+
 data_trackrev <- read.csv("Tracking.csv", sep =";", header = T)
 
+####Figure 2####
 data_transmitter <- data_trackrev %>%
   distinct(Title, Transmitters, .keep_all = TRUE)
 
@@ -37,3 +45,29 @@ ggplot(data_transmitter, aes(x = Year_Group, fill = Transmitters)) +
         axis.title = element_text(size = 14),
         legend.text = element_text(size = 11),
         legend.title = element_text(size = 14))
+
+####Figure 3####
+world_map <- map_data("world")
+
+frequency_table <- data %>%
+  distinct(Title, .keep_all = TRUE) %>%
+  group_by(Long, Lat, Continents, Class) %>%
+  summarise(Frequency = n()) %>%
+  spread(Class, Frequency, fill = 0)
+
+frequency_table <- frequency_table %>%
+  mutate(Tot = Amphibians + Reptiles)
+frequency_table <- frequency_table %>%
+  mutate(radius = 50*(Tot / sum(frequency_table$Tot)))
+
+p <- ggplot(world_map, aes(long, lat)) +
+  geom_map(map=world_map, aes(map_id=region), fill="lightgray", color="white") +
+  coord_quickmap()
+p + geom_scatterpie(aes(x=Long, y=Lat, group=Continents, r=radius),
+                    data=frequency_table, cols=c("Amphibians", "Reptiles"), color="black", alpha=0.8) +
+  geom_scatterpie_legend(frequency_table$radius, x=-170, y=-50, n=4, labeller = function(x) round(x/50 *sum(frequency_table$Tot)))+
+  scale_fill_manual(values = c("Amphibians" = "#cc6677", "Reptiles" = "#88ccee")) + 
+  theme_void()+
+  theme(legend.position = "bottom",
+        legend.title = element_blank(),
+        axis.title = element_blank())
