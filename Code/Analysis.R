@@ -1,3 +1,7 @@
+
+# Load libraries
+library(tidyr)
+
 data_trackrev <- read.csv("./Data/Tracking.csv", sep =";", header = T)
 
 #Year
