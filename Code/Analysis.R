@@ -1,6 +1,7 @@
 
 # Load libraries
 library(dplyr)
+library(tidyr)
 
 data_trackrev <- read.csv("./Data/Tracking.csv", sep =";", header = T)
 
@@ -50,7 +51,7 @@ frequency_table_prop[, -c(1:3)] <- frequency_table_prop[, -c(1:3)] / rowSums(fre
 frequency_table_totIUCN_prop <- frequency_table_totIUCN
 frequency_table_totIUCN_prop[, -c(1:3)] <- frequency_table_totIUCN_prop[, -c(1:3)] / rowSums(frequency_table_totIUCN_prop[, -c(1:3)], na.rm=TRUE)
 
-prop_tracked <- frequency_table_prop / frequency_table_totIUCN_prop
+prop_tracked <- frequency_table_prop[, -c(1:3)] / frequency_table_totIUCN_prop[, -c(1:3)] 
 
 #Order
 data_specie_transm <- data_trackrev %>%
@@ -66,7 +67,7 @@ data_tit_brand <- data_trackrev %>%
 brand_frequencies <- as.data.frame(table(data_tit_brand$Brand_transmitter))
 
 #Device/Animal weight freq
-data_title_trans.anim <- data %>%
+data_title_trans.anim <- data_trackrev %>%
   distinct(Title, Transmitter.Animal, .keep_all = TRUE)
 rate_transm_frequencies <- as.data.frame(table(data_title_trans.anim$Transmitter.Animal))
 
