@@ -10,7 +10,7 @@ Biotelemetry methods used to study the movement of amphibians and reptiles inclu
 
 These methods have greatly improved our understanding of small-scale behaviors, such as habitat selection and movement patterns.
 
-####Methodology
+#### Methodology
 To compile a comprehensive review, a systematic search was conducted using specific keywords (e.g., "tracking amphibian", "radio telemetry reptile", "GPS tracking reptile", etc.) across the first 10 pages of Google Scholar. A detailed table was created to extract relevant data from each study, including parameters such as species, transmitter type, attachment methods, monitoring duration, and effects on animals (e.g., injury and mortality rates).
 
 This systematic approach allowed for the organization of key information from a broad range of studies, providing a comprehensive overview of the current state of biotelemetry research in herpetology.

@@ -1,5 +1,5 @@
 ##Libraries
-#negessary libraries to generate figure 2 and figure 4
+#necessary libraries to generate figure 2 and figure 4
 library(tidyr)
 library(dplyr) 
 library(ggplot2)
@@ -96,3 +96,4 @@ ggplot(data_species_transm, aes(x = Order, fill = Transmitters)) +
     axis.title = element_text(size = 14),
     legend.text = element_text(size = 11),
     legend.title = element_text(size = 14))
+
