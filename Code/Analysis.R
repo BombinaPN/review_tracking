@@ -1,6 +1,8 @@
 # Load libraries
 library(dplyr)
 library(tidyr)
+library(ggplot2)
+
 
 # Load the dataset
 data_trackrev <- read.csv("./Data/Tracking.csv", sep =";", header = T)
@@ -109,6 +111,22 @@ data_tit_samplesize <- data_tit_samplesize %>%
 shapiro.test(data_tit_samplesize$Sample_size_mean)
 wilcox.test(Sample_size_mean ~ Class, data = data_tit_samplesize)
 
+data_tit_specie <- data_trackrev %>%
+  distinct(Title, Species, .keep_all = TRUE)
+
+mortality_by_class <- data_tit_specie %>%
+  group_by(Class) %>%
+  summarise(
+    n = n(),
+    mean_mortality = mean(Mortality_rate, na.rm = TRUE),
+    median_mortality = median(Mortality_rate, na.rm = TRUE),
+    sd_mortality = sd(Mortality_rate, na.rm = TRUE),
+    min_mortality = min(Mortality_rate, na.rm = TRUE),
+    max_mortality = max(Mortality_rate, na.rm = TRUE)
+  )
+
+wilcox.test(Mortality_rate ~ Class, data = data_tit_specie)
+
 ##### Section 10: Tracking Days Analysis ####
 data_tit_daytrack <- data_trackrev %>%     # Compute mean tracking days for each title
   distinct(Title, Tracking_days, .keep_all = TRUE)  %>% 
@@ -137,8 +155,57 @@ non_zero_non_na_count <- sum(data_tit$Mortality_rate != 0 & !is.na(data_tit $Mor
 #### Section 12: Correlation Between Transmitter Weight Ratio and Mortality ####
 data_tit_trans.anim <- data_trackrev %>%    # Calculate correlation between Transmitter-to-animal weight ratio and mortality rate
   distinct(Title, Transmitter.Animal, .keep_all = TRUE)
-cor(data_tit_trans.anim$Transmitter.Animal, data_tit_trans.anim$Mortality_rate, use = "complete.obs")
 
+shapiro.test(data_tit_trans.anim$Transmitter.Animal)
+shapiro.test(data_tit_trans.anim$Mortality_rate)
+
+cor_test_result <- cor.test(
+  data_tit_trans.anim$Transmitter.Animal,
+  data_tit_trans.anim$Mortality_rate,
+  use = "complete.obs",
+  method = "spearman"  
+)
+cor_test_result
+
+ggplot(data_tit_trans.anim, 
+       aes(x = Transmitter.Animal, y = Mortality_rate)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(method = "lm", se = TRUE, color = "steelblue") +
+  labs(
+    x = "Transmitter-to-body weight ratio (%)",
+    y = "Mortality rate",
+    title = "Correlation between transmitter weight ratio and mortality"
+  ) +
+  theme_classic()
+
+
+
+data_tit_trans.anim$mortality_group <- ifelse(
+  data_tit_trans.anim$Mortality_rate == 0, "Zero", "Non-zero"
+)
+
+ggplot(data_tit_trans.anim, 
+       aes(x = Transmitter.Animal, y = Mortality_rate, 
+           color = mortality_group)) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(data = subset(data_tit_trans.anim, Mortality_rate > 0),
+              method = "lm", se = TRUE, color = "steelblue") +
+  scale_color_manual(values = c("Zero" = "gray70", "Non-zero" = "steelblue")) +
+  labs(
+    x = "Transmitter-to-body weight ratio",
+    y = "Mortality rate",
+    color = "Mortality"
+  ) +
+  theme_classic()
+
+
+ggplot(subset(data_tit_trans.anim, Mortality_rate > 0), 
+       aes(x = Transmitter.Animal, y = Mortality_rate)) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "lm", se = TRUE) +
+  scale_y_log10() +
+  labs(x = "Transmitter-to-body weight ratio", y = "Mortality rate (log scale)") +
+  theme_classic()
 #### Section 13: Mortality Rate by Family ####
 # Perform ANOVA to assess differences in mortality rate across species families
 data_tit_specie <- data_trackrev %>%
@@ -170,3 +237,128 @@ TukeyHSD(anova_lost_attach) # Perform post-hoc Tukey's Honest Significant Differ
 mod_lost_day <- lm(Device_loss_rate ~ Tracking_days, data = data_title_attach)
 summary(mod_lost_day)
 
+
+
+#### Section 15: Web of Science Validation ####
+library(readxl)
+library(ggplot2)
+library(dplyr)
+
+# Load all WoS files and combine them - forcing all columns to character
+wos_files <- lapply(list(
+  "./Data/savedrecs.xls",
+  "./Data/savedrecs (1).xls",
+  "./Data/savedrecs (2).xls",
+  "./Data/savedrecs (3).xls",
+  "./Data/savedrecs (4).xls",
+  "./Data/savedrecs (5).xls",
+  "./Data/savedrecs (6).xls",
+  "./Data/savedrecs (7).xls"
+), function(f) {
+  df <- read_excel(f)
+  df %>% mutate(across(everything(), as.character))
+})
+
+wos_data <- bind_rows(wos_files)
+
+# Convert Publication Year back to numeric
+wos_data <- wos_data %>%
+  mutate(`Publication Year` = as.numeric(`Publication Year`))
+
+cat("Total records before deduplication:", nrow(wos_data), "\n")
+
+# Remove duplicates based on unique WoS ID
+wos_data_clean <- wos_data %>%
+  distinct(`UT (Unique WOS ID)`, .keep_all = TRUE)
+
+cat("Total records after removing duplicates:", nrow(wos_data_clean), "\n")
+
+# Filter to same year range as your dataset (1970-2023)
+wos_data_clean <- wos_data_clean %>%
+  filter(`Publication Year` >= 1970 & `Publication Year` <= 2023)
+
+cat("Records within 1970-2023:", nrow(wos_data_clean), "\n")
+
+# Frequency by year - WoS
+freq_wos <- wos_data_clean %>%
+  group_by(Year = `Publication Year`) %>%
+  summarise(WoS_count = n())
+
+# Frequency by year - your Google Scholar dataset
+freq_gs <- data_trackrev %>%
+  distinct(Title, .keep_all = TRUE) %>%
+  group_by(Year) %>%
+  summarise(GS_count = n())
+
+# Merge the two datasets
+comparison <- full_join(freq_wos, freq_gs, by = "Year") %>%
+  arrange(Year) %>%
+  replace(is.na(.), 0)
+
+# Check the dip 2010-2014 specifically
+cat("\n--- Counts during 2010-2014 ---\n")
+print(comparison %>% filter(Year >= 2010 & Year <= 2014))
+
+cat("\n--- Counts before dip 2005-2009 ---\n")
+print(comparison %>% filter(Year >= 2005 & Year <= 2009))
+
+cat("\n--- Counts after dip 2015-2019 ---\n")
+print(comparison %>% filter(Year >= 2015 & Year <= 2019))
+
+# Normalize to proportions for visual comparison (since total counts differ)
+comparison <- comparison %>%
+  mutate(
+    WoS_prop = WoS_count / sum(WoS_count),
+    GS_prop = GS_count / sum(GS_count)
+  )
+
+# Correlation between the two trends
+cor_trends <- cor(comparison$WoS_count, comparison$GS_count, 
+                  use = "complete.obs", method = "spearman")
+cat("\nSpearman correlation between WoS and GS trends:", round(cor_trends, 3), "\n")
+
+# Plot: absolute counts
+p1 <- ggplot(comparison, aes(x = Year)) +
+  geom_line(aes(y = WoS_count, color = "Web of Science"), linewidth = 0.8) +
+  geom_line(aes(y = GS_count, color = "Google Scholar"), linewidth = 0.8) +
+  geom_point(aes(y = WoS_count, color = "Web of Science"), size = 1.5) +
+  geom_point(aes(y = GS_count, color = "Google Scholar"), size = 1.5) +
+  annotate("rect", xmin = 2010, xmax = 2014, 
+           ymin = -Inf, ymax = Inf, alpha = 0.1, fill = "gray40") +
+  scale_color_manual(values = c("Web of Science" = "steelblue", 
+                                "Google Scholar" = "darkorange")) +
+  labs(x = "Year", y = "Number of studies", color = "Source",
+       title = "Temporal trend: Web of Science vs Google Scholar") +
+  theme_classic() +
+  theme(legend.position = "bottom")
+
+print(p1)
+
+# Plot: normalized proportions (for fair visual comparison)
+comparison_long <- comparison %>%
+  select(Year, WoS_prop, GS_prop) %>%
+  tidyr::pivot_longer(cols = c(WoS_prop, GS_prop), 
+                      names_to = "Source", 
+                      values_to = "Proportion") %>%
+  mutate(Source = recode(Source, 
+                         "WoS_prop" = "Web of Science",
+                         "GS_prop" = "Google Scholar"))
+
+p2 <- ggplot(comparison_long, aes(x = Year, y = Proportion, color = Source)) +
+  geom_line(linewidth = 0.8) +
+  geom_point(size = 1.5) +
+  annotate("rect", xmin = 2010, xmax = 2014,
+           ymin = -Inf, ymax = Inf, alpha = 0.1, fill = "gray40") +
+  scale_color_manual(values = c("Web of Science" = "steelblue",
+                                "Google Scholar" = "darkorange")) +
+  labs(x = "Year", y = "Proportion of studies", color = "Source",
+       title = "Temporal trend (normalized): Web of Science vs Google Scholar",
+       caption = "Grey band = 2010-2014 period") +
+  theme_classic() +
+  theme(legend.position = "bottom")
+
+print(p2)
+
+# Save comparison table
+write.csv(comparison, "./Data/WoS_GS_comparison.csv", row.names = FALSE)
+cat("\nComparison table saved to ./Data/WoS_GS_comparison.csv\n")
